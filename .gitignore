@@ -1,0 +1,14 @@
+# Binaries and build artifacts
+*.exe
+*.dll
+*.so
+
+# Temporary and log files
+*.log
+*~
+
+# Environment files
+.env
+
+# Test coverage files
+*.out
