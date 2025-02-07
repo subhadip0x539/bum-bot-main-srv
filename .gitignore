@@ -3,12 +3,17 @@
 *.dll
 *.so
 
-# Temporary and log files
+# Temporary directories
+tmp
+
+# Log files
 *.log
-*~
 
 # Environment files
 .env
+
+# Configuration files
+.toml
 
 # Test coverage files
 *.out
