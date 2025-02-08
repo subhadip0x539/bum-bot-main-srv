@@ -1,0 +1,19 @@
+# Binaries and build artifacts
+*.exe
+*.dll
+*.so
+
+# Temporary directories
+tmp
+
+# Log files
+*.log
+
+# Environment files
+.env
+
+# Configuration files
+.toml
+
+# Test coverage files
+*.out
