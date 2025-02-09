@@ -12,7 +12,7 @@ const (
 type GuildSettingsWelcomeMessageContent struct {
 	Title       string `bson:"title"`
 	Description string `bson:"description"`
-	Color       string `bson:"color"`
+	Color       int    `bson:"color"`
 	Image       string `bson:"image"`
 	Avatar      bool   `bson:"avatar"`
 }
@@ -68,6 +68,6 @@ type Role struct {
 	Name     string `bson:"name" json:"name"`
 	GuildID  string `bson:"guild_id" json:"guild_id"`
 	Position int    `bson:"position" json:"position"`
-	Color    string `bson:"color,omitempty" json:"color"`
+	Color    int    `bson:"color,omitempty" json:"color"`
 	Managed  bool   `bson:"managed" json:"managed"`
 }

@@ -41,13 +41,13 @@ func (s *WelcomeServiceImpl) GreetUser(guildID string, event *discordgo.GuildMem
 		},
 	}
 
-	type GuildSettings struct {
+	type Guild struct {
 		GuildID   string               `bson:"_id"`
 		GuildName string               `bson:"name"`
 		Settings  domain.GuildSettings `bson:"settings"`
 	}
 
-	var results []GuildSettings
+	var results []Guild
 
 	if err := s.mongoRepo.Aggregate("guilds", pipeline, &results); err != nil {
 		return domain.Error{
@@ -86,8 +86,7 @@ func (s *WelcomeServiceImpl) GreetUser(guildID string, event *discordgo.GuildMem
 		embed := &discordgo.MessageEmbed{
 			Title:       utils.ParseTemplate(content.Title, templateKeys),
 			Description: utils.ParseTemplate(content.Description, templateKeys),
-
-			Color: 0xc356fd,
+			Color:       content.Color,
 			Image: &discordgo.MessageEmbedImage{
 				URL: content.Image,
 			},
