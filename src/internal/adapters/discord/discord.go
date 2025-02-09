@@ -1,8 +1,6 @@
 package discord
 
-import (
-	"github.com/bwmarrin/discordgo"
-)
+import "github.com/bwmarrin/discordgo"
 
 type DiscordClient struct {
 	Session *discordgo.Session

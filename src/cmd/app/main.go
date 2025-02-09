@@ -1,8 +1,9 @@
 package main
 
 import (
-	"log/slog"
 	"os"
+
+	"log/slog"
 
 	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/app"
 	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/config"

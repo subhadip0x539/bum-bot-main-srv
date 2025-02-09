@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"strings"
+
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -20,4 +22,13 @@ func GetChannelType(channelType discordgo.ChannelType) string {
 	default:
 		return "unknown"
 	}
+}
+
+func ParseTemplate(template string, values map[string]string) string {
+	for key, value := range values {
+		placeholder := "{" + key + "}"
+		template = strings.ReplaceAll(template, placeholder, value)
+	}
+
+	return template
 }

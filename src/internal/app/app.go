@@ -34,7 +34,7 @@ func Run(cfg config.Config) {
 	discordRepo := repositories.NewDiscordRepo(discord.Session)
 	mongoRepo := repositories.NewMongoRepo(mongo.Client, cfg.Mongo.Database)
 
-	welcomeService := services.NewWelcomeService(discordRepo)
+	welcomeService := services.NewWelcomeService(discordRepo, mongoRepo)
 	welcomeHandler := handlers.NewWelcomeHandler(welcomeService)
 
 	setupService := services.NewSetupService(mongoRepo)
