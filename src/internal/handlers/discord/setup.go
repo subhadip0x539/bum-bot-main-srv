@@ -20,7 +20,7 @@ type SetupHandler struct {
 func (h *SetupHandler) SetupHandlerFunc(s *discordgo.Session, m *discordgo.GuildCreate) {
 	ok, err := h.svc.IsGuildExists(m.Guild.ID)
 	if err.Error != nil {
-		slog.Error(err.Error.Error())
+		slog.Error(err.Message)
 	}
 
 	if ok {
@@ -83,31 +83,25 @@ func (h *SetupHandler) SetupHandlerFunc(s *discordgo.Session, m *discordgo.Guild
 			Name:     role.Name,
 			GuildID:  m.Guild.ID,
 			Position: role.Position,
-			Color: func() string {
-				if role.Color == 0 {
-					return ""
-				} else {
-					return fmt.Sprintf("%x", role.Color)
-				}
-			}(),
-			Managed: role.Managed,
+			Color:    role.Color,
+			Managed:  role.Managed,
 		})
 	}
 
 	if err := h.svc.LoadGuild(guild); err.Error != nil {
-		slog.Error(err.Error.Error())
+		slog.Error(err.Message)
 	}
 	if err := h.svc.LoadSettings(settings); err.Error != nil {
-		slog.Error(err.Error.Error())
+		slog.Error(err.Message)
 	}
 	if err := h.svc.LoadMembers(members); err.Error != nil {
-		slog.Error(err.Error.Error())
+		slog.Error(err.Message)
 	}
 	if err := h.svc.LoadChannels(channels); err.Error != nil {
-		slog.Error(err.Error.Error())
+		slog.Error(err.Message)
 	}
 	if err := h.svc.LoadRoles(roles); err.Error != nil {
-		slog.Error(err.Error.Error())
+		slog.Error(err.Message)
 	}
 
 }
