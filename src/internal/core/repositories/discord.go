@@ -1,8 +1,6 @@
 package repositories
 
-import (
-	"github.com/bwmarrin/discordgo"
-)
+import "github.com/bwmarrin/discordgo"
 
 type DiscordRepoImpl struct {
 	session *discordgo.Session
