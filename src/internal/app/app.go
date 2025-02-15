@@ -7,12 +7,12 @@ import (
 	"log/slog"
 	"os/signal"
 
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/adapters/discord"
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/adapters/mongo"
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/config"
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/core/repositories"
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/core/services"
-	handlers "github.com/subhadip0x539/bum-bot-main-srv/src/internal/handlers/discord"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/adapters/discord"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/adapters/mongo"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/config"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/repositories"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/services"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/handlers"
 )
 
 func Run(cfg config.Config) {
@@ -34,13 +34,14 @@ func Run(cfg config.Config) {
 	discordRepo := repositories.NewDiscordRepo(discord.Session)
 	mongoRepo := repositories.NewMongoRepo(mongo.Client, cfg.Mongo.Database)
 
-	welcomeService := services.NewWelcomeService(discordRepo, mongoRepo)
-	welcomeHandler := handlers.NewWelcomeHandler(welcomeService)
+	greetingsService := services.NewWelcomeService(discordRepo, mongoRepo)
+	greetingsHandler := handlers.NewGreetingsHandler(greetingsService)
 
 	setupService := services.NewSetupService(mongoRepo)
 	setupHandler := handlers.NewSetupHandler(setupService)
 
-	discord.RegisterHandler(welcomeHandler.WelcomeHandlerFunc)
+	discord.RegisterHandler(greetingsHandler.MemberAddHandlerFunc)
+	discord.RegisterHandler(greetingsHandler.MemberRemoveHandlerFunc)
 	discord.RegisterHandler(setupHandler.SetupHandlerFunc)
 
 	discord.Start()

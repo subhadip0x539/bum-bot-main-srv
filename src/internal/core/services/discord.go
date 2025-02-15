@@ -2,21 +2,51 @@ package services
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/core/domain"
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/core/ports"
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/core/utils"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/domain"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/ports"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/utils"
 )
 
-type WelcomeServiceImpl struct {
+type GreetingsServiceImpl struct {
 	discordRepo ports.DiscordRepo
 	mongoRepo   ports.MongoRepo
 }
 
-func (s *WelcomeServiceImpl) GreetUser(guildID string, event *discordgo.GuildMemberAdd) domain.Error {
+func (s *GreetingsServiceImpl) AddMember(member domain.Member) domain.Error {
+	if err := s.mongoRepo.InsertOne("members", member); err != nil {
+		return domain.Error{
+			Severity: domain.SEVERITY_ERROR,
+			Message:  err.Error(),
+			Error:    err,
+		}
+	}
+
+	return domain.Error{
+		Severity: domain.SEVERITY_SUCCESS,
+		Message:  fmt.Sprintf("Inserted member successfully with id {%s}", member.ID),
+	}
+}
+
+func (s *GreetingsServiceImpl) RemoveMember(memberID string, guildID string) domain.Error {
+	if err := s.mongoRepo.DeleteOne("members", bson.M{"user_id": memberID, "guild_id": guildID}); err != nil {
+		return domain.Error{
+			Severity: domain.SEVERITY_ERROR,
+			Error:    err,
+			Message:  err.Error(),
+		}
+	}
+	return domain.Error{
+		Severity: domain.SEVERITY_SUCCESS,
+		Message:  fmt.Sprintf("Deleted member successfully with id {%s}", memberID),
+	}
+}
+
+func (s *GreetingsServiceImpl) WelcomeMember(guildID string, event *discordgo.GuildMemberAdd) domain.Error {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{"_id": guildID},
@@ -60,7 +90,7 @@ func (s *WelcomeServiceImpl) GreetUser(guildID string, event *discordgo.GuildMem
 	if len(results) == 0 {
 		return domain.Error{
 			Severity: domain.SEVERITY_WARNING,
-			Message:  fmt.Sprintf("No settings found for the guild %s", guildID),
+			Message:  fmt.Sprintf("No settings found for the guild with id {%s}", guildID),
 		}
 	}
 
@@ -70,8 +100,8 @@ func (s *WelcomeServiceImpl) GreetUser(guildID string, event *discordgo.GuildMem
 
 	if !options.Enabled {
 		return domain.Error{
-			Severity: domain.SEVERITY_SUCCESS,
-			Message:  fmt.Sprintf("Welcome plugin is not enabled for guild_id: %s", guildID),
+			Severity: domain.SEVERITY_WARNING,
+			Message:  fmt.Sprintf("Welcome plugin is not enabled for guild with id {%s}", guildID),
 		}
 	}
 
@@ -104,14 +134,35 @@ func (s *WelcomeServiceImpl) GreetUser(guildID string, event *discordgo.GuildMem
 		}
 	}
 
+	if options.Message.Type == domain.GUILD_SETTINGS_WELCOME_MESSAGE_TYPE_TEXT {
+		content := options.Message.Content
+
+		err := s.discordRepo.SendMessage(options.ChannelID, utils.ParseTemplate(content.Description, templateKeys))
+		if err != nil {
+			return domain.Error{
+				Severity: domain.SEVERITY_ERROR,
+				Message:  err.Error(),
+				Error:    err,
+			}
+		}
+
+	}
+
 	return domain.Error{
 		Severity: domain.SEVERITY_SUCCESS,
-		Message:  fmt.Sprintf("Welcome message sent successfully for user %s", event.Member.User.ID),
+		Message:  fmt.Sprintf("Welcome message sent successfully for member with id {%s}", event.Member.User.ID),
 	}
 }
 
-func NewWelcomeService(discordRepo ports.DiscordRepo, mongoRepo ports.MongoRepo) *WelcomeServiceImpl {
-	return &WelcomeServiceImpl{discordRepo: discordRepo, mongoRepo: mongoRepo}
+func (s *GreetingsServiceImpl) GoodbyeMember(guildID string, event *discordgo.GuildMemberRemove) domain.Error {
+	return domain.Error{
+		Severity: domain.SEVERITY_SUCCESS,
+		Message:  fmt.Sprintf("Welcome message sent successfully for member with id {%s}", event.Member.User.ID),
+	}
+}
+
+func NewWelcomeService(discordRepo ports.DiscordRepo, mongoRepo ports.MongoRepo) *GreetingsServiceImpl {
+	return &GreetingsServiceImpl{discordRepo: discordRepo, mongoRepo: mongoRepo}
 }
 
 type SetupServiceImpl struct {
@@ -147,7 +198,7 @@ func (s *SetupServiceImpl) LoadGuild(guild domain.Guild) domain.Error {
 
 	return domain.Error{
 		Severity: domain.SEVERITY_SUCCESS,
-		Error:    nil,
+		Message:  fmt.Sprintf("Inserted guild successfully with id {%s}", guild.ID),
 	}
 }
 
@@ -162,17 +213,17 @@ func (s *SetupServiceImpl) LoadSettings(settings domain.GuildSettings) domain.Er
 
 	return domain.Error{
 		Severity: domain.SEVERITY_SUCCESS,
-		Error:    nil,
+		Message:  fmt.Sprintf("Inserted settings successfully with id {%s}", settings.ID),
 	}
 }
 
 func (s *SetupServiceImpl) LoadMembers(members []domain.Member) domain.Error {
-	membersInterface := make([]interface{}, len(members))
+	documents := make([]interface{}, len(members))
 	for i, member := range members {
-		membersInterface[i] = member
+		documents[i] = member
 	}
 
-	if err := s.repo.InsertMany("members", membersInterface); err != nil {
+	if err := s.repo.InsertMany("members", documents); err != nil {
 		return domain.Error{
 			Severity: domain.SEVERITY_ERROR,
 			Message:  err.Error(),
@@ -182,7 +233,12 @@ func (s *SetupServiceImpl) LoadMembers(members []domain.Member) domain.Error {
 
 	return domain.Error{
 		Severity: domain.SEVERITY_SUCCESS,
-		Error:    nil,
+		Message: fmt.Sprintf("Inserted members successfully with ids {%s}", strings.Join(func() (s []string) {
+			for _, v := range members {
+				s = append(s, v.ID)
+			}
+			return s
+		}(), ",")),
 	}
 }
 
@@ -202,7 +258,12 @@ func (s *SetupServiceImpl) LoadChannels(channels []domain.Channel) domain.Error 
 
 	return domain.Error{
 		Severity: domain.SEVERITY_SUCCESS,
-		Error:    nil,
+		Message: fmt.Sprintf("Inserted channels successfully with ids {%s}", strings.Join(func() (s []string) {
+			for _, v := range channels {
+				s = append(s, v.ID)
+			}
+			return s
+		}(), ",")),
 	}
 }
 
@@ -222,7 +283,12 @@ func (s *SetupServiceImpl) LoadRoles(roles []domain.Role) domain.Error {
 
 	return domain.Error{
 		Severity: domain.SEVERITY_SUCCESS,
-		Error:    nil,
+		Message: fmt.Sprintf("Inserted roles successfully with ids {%s}", strings.Join(func() (s []string) {
+			for _, v := range roles {
+				s = append(s, v.ID)
+			}
+			return s
+		}(), ",")),
 	}
 }
 
