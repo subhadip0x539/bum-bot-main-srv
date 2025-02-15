@@ -1,4 +1,4 @@
-package discord
+package handlers
 
 import (
 	"fmt"
@@ -8,9 +8,9 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/core/domain"
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/core/ports"
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/core/utils"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/domain"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/ports"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/utils"
 )
 
 type SetupHandler struct {
@@ -18,13 +18,18 @@ type SetupHandler struct {
 }
 
 func (h *SetupHandler) SetupHandlerFunc(s *discordgo.Session, m *discordgo.GuildCreate) {
-	ok, err := h.svc.IsGuildExists(m.Guild.ID)
+	var (
+		err    domain.Error
+		exists bool
+	)
+
+	exists, err = h.svc.IsGuildExists(m.Guild.ID)
 	if err.Error != nil {
 		slog.Error(err.Message)
 	}
 
-	if ok {
-		slog.Info(fmt.Sprintf("Guild already exists: %s", m.Guild.ID))
+	if exists {
+		slog.Info(fmt.Sprintf("Guild already exists with id {%s}", m.Guild.ID))
 		return
 	}
 
@@ -33,6 +38,9 @@ func (h *SetupHandler) SetupHandlerFunc(s *discordgo.Session, m *discordgo.Guild
 	settings := domain.GuildSettings{
 		ID: settingsID,
 		Welcome: domain.GuildSettingsWelcome{
+			Enabled: false,
+		},
+		ServerStats: domain.GuildSettingsServerStats{
 			Enabled: false,
 		},
 	}
@@ -56,6 +64,7 @@ func (h *SetupHandler) SetupHandlerFunc(s *discordgo.Session, m *discordgo.Guild
 			Nickname:      member.Nick,
 			AvatarURL:     member.AvatarURL("256"),
 			Roles:         member.Roles,
+			Bot:           member.User.Bot,
 			JoinedAt:      member.JoinedAt,
 		})
 	}
@@ -88,21 +97,20 @@ func (h *SetupHandler) SetupHandlerFunc(s *discordgo.Session, m *discordgo.Guild
 		})
 	}
 
-	if err := h.svc.LoadGuild(guild); err.Error != nil {
-		slog.Error(err.Message)
-	}
-	if err := h.svc.LoadSettings(settings); err.Error != nil {
-		slog.Error(err.Message)
-	}
-	if err := h.svc.LoadMembers(members); err.Error != nil {
-		slog.Error(err.Message)
-	}
-	if err := h.svc.LoadChannels(channels); err.Error != nil {
-		slog.Error(err.Message)
-	}
-	if err := h.svc.LoadRoles(roles); err.Error != nil {
-		slog.Error(err.Message)
-	}
+	err = h.svc.LoadGuild(guild)
+	utils.LogEvent(err)
+
+	err = h.svc.LoadSettings(settings)
+	utils.LogEvent(err)
+
+	err = h.svc.LoadMembers(members)
+	utils.LogEvent(err)
+
+	err = h.svc.LoadChannels(channels)
+	utils.LogEvent(err)
+
+	err = h.svc.LoadRoles(roles)
+	utils.LogEvent(err)
 
 }
 

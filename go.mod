@@ -1,4 +1,4 @@
-module github.com/subhadip0x539/bum-bot-main-srv
+module github.com/subhadip0x539/bum-bot-event-hdl
 
 go 1.23.5
 

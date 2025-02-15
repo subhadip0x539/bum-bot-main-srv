@@ -5,9 +5,9 @@ import (
 
 	"log/slog"
 
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/app"
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/config"
-	"github.com/subhadip0x539/bum-bot-main-srv/src/pkg/motd"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/app"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/config"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/pkg/motd"
 )
 
 func init() {

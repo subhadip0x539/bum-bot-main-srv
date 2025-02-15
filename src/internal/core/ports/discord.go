@@ -3,7 +3,7 @@ package ports
 import (
 	"github.com/bwmarrin/discordgo"
 
-	"github.com/subhadip0x539/bum-bot-main-srv/src/internal/core/domain"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/domain"
 )
 
 type DiscordRepo interface {
@@ -12,8 +12,11 @@ type DiscordRepo interface {
 	SendEmbed(channelID string, embed *discordgo.MessageEmbed) error
 }
 
-type WelcomeService interface {
-	GreetUser(guild string, event *discordgo.GuildMemberAdd) domain.Error
+type GreetingsService interface {
+	AddMember(member domain.Member) domain.Error
+	RemoveMember(memberID string, guildID string) domain.Error
+	WelcomeMember(guildID string, event *discordgo.GuildMemberAdd) domain.Error
+	GoodbyeMember(guildID string, event *discordgo.GuildMemberRemove) domain.Error
 }
 
 type SetupService interface {

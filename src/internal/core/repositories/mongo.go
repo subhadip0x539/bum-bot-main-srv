@@ -46,6 +46,16 @@ func (r *MongoRepoImpl) InsertMany(collection string, documents []interface{}) e
 	return nil
 }
 
+func (r *MongoRepoImpl) DeleteOne(collection string, filter interface{}) error {
+	c := r.client.Database(r.database).Collection(collection)
+
+	if _, err := c.DeleteOne(context.TODO(), filter); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *MongoRepoImpl) Aggregate(collection string, pipeline []bson.M, results interface{}) error {
 	c := r.client.Database(r.database).Collection(collection)
 

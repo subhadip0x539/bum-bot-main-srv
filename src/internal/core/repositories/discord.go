@@ -14,6 +14,7 @@ func (r *DiscordRepoImpl) FindChannel(guildID, name string, channelType discordg
 			return channel
 		}
 	}
+
 	return nil
 }
 
