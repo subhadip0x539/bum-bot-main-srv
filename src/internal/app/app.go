@@ -7,8 +7,7 @@ import (
 	"log/slog"
 	"os/signal"
 
-	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/adapters/discord"
-	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/adapters/mongo"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/adapters"
 	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/config"
 	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/repositories"
 	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/services"
@@ -16,12 +15,12 @@ import (
 )
 
 func Run(cfg config.Config) {
-	discord, err := discord.NewDiscordClient(cfg.Discord.Token)
+	discord, err := adapters.NewDiscordClient(cfg.Discord.Token)
 	if err != nil {
 		slog.Error(err.Error())
 	}
 
-	mongo, err := mongo.NewMongoClient(cfg.Mongo.URI)
+	mongo, err := adapters.NewMongoClient(cfg.Mongo.URI)
 	if err != nil {
 		slog.Error(err.Error())
 	}
