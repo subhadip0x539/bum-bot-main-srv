@@ -2,10 +2,10 @@ package services
 
 import (
 	"fmt"
-	"strings"
+
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/bwmarrin/discordgo"
-	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/domain"
 	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/ports"
@@ -17,36 +17,21 @@ type GreetingsServiceImpl struct {
 	mongoRepo   ports.MongoRepo
 }
 
-func (s *GreetingsServiceImpl) AddMember(member domain.Member) domain.Error {
+func (s *GreetingsServiceImpl) AddMember(member domain.Member) *domain.Error {
 	if err := s.mongoRepo.InsertOne("members", member); err != nil {
-		return domain.Error{
-			Severity: domain.SEVERITY_ERROR,
-			Message:  err.Error(),
-			Error:    err,
-		}
+		return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
-
-	return domain.Error{
-		Severity: domain.SEVERITY_SUCCESS,
-		Message:  fmt.Sprintf("Inserted member successfully with id {%s}", member.ID),
-	}
+	return nil
 }
 
-func (s *GreetingsServiceImpl) RemoveMember(memberID string, guildID string) domain.Error {
+func (s *GreetingsServiceImpl) RemoveMember(memberID string, guildID string) *domain.Error {
 	if err := s.mongoRepo.DeleteOne("members", bson.M{"user_id": memberID, "guild_id": guildID}); err != nil {
-		return domain.Error{
-			Severity: domain.SEVERITY_ERROR,
-			Error:    err,
-			Message:  err.Error(),
-		}
+		return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
-	return domain.Error{
-		Severity: domain.SEVERITY_SUCCESS,
-		Message:  fmt.Sprintf("Deleted member successfully with id {%s}", memberID),
-	}
+	return nil
 }
 
-func (s *GreetingsServiceImpl) WelcomeMember(guildID string, event *discordgo.GuildMemberAdd) domain.Error {
+func (s *GreetingsServiceImpl) WelcomeMember(guildID string, event *discordgo.GuildMemberAdd) *domain.Error {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{"_id": guildID},
@@ -80,29 +65,26 @@ func (s *GreetingsServiceImpl) WelcomeMember(guildID string, event *discordgo.Gu
 	var results []Guild
 
 	if err := s.mongoRepo.Aggregate("guilds", pipeline, &results); err != nil {
-		return domain.Error{
-			Severity: domain.SEVERITY_ERROR,
-			Message:  err.Error(),
-			Error:    err,
-		}
+		return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
 
 	if len(results) == 0 {
-		return domain.Error{
-			Severity: domain.SEVERITY_WARNING,
-			Message:  fmt.Sprintf("No settings found for the guild with id {%s}", guildID),
-		}
+		err := fmt.Errorf("no settings found for the guild with id {%s}", guildID)
+		return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
 
 	config := results[0]
 	settings := config.Settings
-	options := settings.Welcome
+	plugin := settings.Plugins[0]
 
-	if !options.Enabled {
-		return domain.Error{
-			Severity: domain.SEVERITY_WARNING,
-			Message:  fmt.Sprintf("Welcome plugin is not enabled for guild with id {%s}", guildID),
-		}
+	if !plugin.Enabled {
+		return domain.NewError(nil, fmt.Sprintf("Welcome plugin is not enabled for guild with id {%s}", guildID), domain.SEVERITY_SUCCESS)
+	}
+
+	options, ok := plugin.Options.(domain.GuildSettingsPluginWelcomeOptions)
+	if !ok {
+		err := fmt.Errorf("invalid welcome plugin options for guild with id {%s}", guildID)
+		return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
 
 	templateKeys := map[string]string{
@@ -124,13 +106,10 @@ func (s *GreetingsServiceImpl) WelcomeMember(guildID string, event *discordgo.Gu
 				URL: event.AvatarURL("256"),
 			},
 		}
+
 		err := s.discordRepo.SendEmbed(options.ChannelID, embed)
 		if err != nil {
-			return domain.Error{
-				Severity: domain.SEVERITY_ERROR,
-				Message:  err.Error(),
-				Error:    err,
-			}
+			return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 		}
 	}
 
@@ -139,26 +118,15 @@ func (s *GreetingsServiceImpl) WelcomeMember(guildID string, event *discordgo.Gu
 
 		err := s.discordRepo.SendMessage(options.ChannelID, utils.ParseTemplate(content.Description, templateKeys))
 		if err != nil {
-			return domain.Error{
-				Severity: domain.SEVERITY_ERROR,
-				Message:  err.Error(),
-				Error:    err,
-			}
+			return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 		}
-
 	}
 
-	return domain.Error{
-		Severity: domain.SEVERITY_SUCCESS,
-		Message:  fmt.Sprintf("Welcome message sent successfully for member with id {%s}", event.Member.User.ID),
-	}
+	return nil
 }
 
-func (s *GreetingsServiceImpl) GoodbyeMember(guildID string, event *discordgo.GuildMemberRemove) domain.Error {
-	return domain.Error{
-		Severity: domain.SEVERITY_SUCCESS,
-		Message:  fmt.Sprintf("Welcome message sent successfully for member with id {%s}", event.Member.User.ID),
-	}
+func (s *GreetingsServiceImpl) GoodbyeMember(guildID string, event *discordgo.GuildMemberRemove) *domain.Error {
+	return nil
 }
 
 func NewWelcomeService(discordRepo ports.DiscordRepo, mongoRepo ports.MongoRepo) *GreetingsServiceImpl {
@@ -169,127 +137,78 @@ type SetupServiceImpl struct {
 	repo ports.MongoRepo
 }
 
-func (s *SetupServiceImpl) IsGuildExists(ID string) (bool, domain.Error) {
+func (s *SetupServiceImpl) IsGuildExists(ID string) (bool, *domain.Error) {
 	var result domain.Guild
 
 	ok, err := s.repo.FindOne("guilds", bson.M{"_id": ID}, &result)
 	if err != nil {
-		return false, domain.Error{
-			Severity: domain.SEVERITY_ERROR,
-			Message:  err.Error(),
-			Error:    err,
-		}
+		return false, domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
 
-	return ok, domain.Error{
-		Severity: domain.SEVERITY_SUCCESS,
-		Error:    nil,
-	}
+	return ok, nil
 }
 
-func (s *SetupServiceImpl) LoadGuild(guild domain.Guild) domain.Error {
+func (s *SetupServiceImpl) LoadGuild(guild domain.Guild) *domain.Error {
 	if err := s.repo.InsertOne("guilds", guild); err != nil {
-		return domain.Error{
-			Severity: domain.SEVERITY_ERROR,
-			Message:  err.Error(),
-			Error:    err,
-		}
+		return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
-
-	return domain.Error{
-		Severity: domain.SEVERITY_SUCCESS,
-		Message:  fmt.Sprintf("Inserted guild successfully with id {%s}", guild.ID),
-	}
+	return nil
 }
 
-func (s *SetupServiceImpl) LoadSettings(settings domain.GuildSettings) domain.Error {
+func (s *SetupServiceImpl) LoadSettings(settings domain.GuildSettings) *domain.Error {
 	if err := s.repo.InsertOne("settings", settings); err != nil {
-		return domain.Error{
-			Severity: domain.SEVERITY_ERROR,
-			Message:  err.Error(),
-			Error:    err,
-		}
+		return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
-
-	return domain.Error{
-		Severity: domain.SEVERITY_SUCCESS,
-		Message:  fmt.Sprintf("Inserted settings successfully with id {%s}", settings.ID),
-	}
+	return nil
 }
 
-func (s *SetupServiceImpl) LoadMembers(members []domain.Member) domain.Error {
+func (s *SetupServiceImpl) LoadMembers(members []domain.Member) *domain.Error {
 	documents := make([]interface{}, len(members))
 	for i, member := range members {
 		documents[i] = member
 	}
 
 	if err := s.repo.InsertMany("members", documents); err != nil {
-		return domain.Error{
-			Severity: domain.SEVERITY_ERROR,
-			Message:  err.Error(),
-			Error:    err,
-		}
+		return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
 
-	return domain.Error{
-		Severity: domain.SEVERITY_SUCCESS,
-		Message: fmt.Sprintf("Inserted members successfully with ids {%s}", strings.Join(func() (s []string) {
-			for _, v := range members {
-				s = append(s, v.ID)
-			}
-			return s
-		}(), ",")),
-	}
+	return nil
 }
 
-func (s *SetupServiceImpl) LoadChannels(channels []domain.Channel) domain.Error {
+func (s *SetupServiceImpl) LoadChannels(channels []domain.Channel) *domain.Error {
 	channelsInterface := make([]interface{}, len(channels))
 	for i, member := range channels {
 		channelsInterface[i] = member
 	}
 
 	if err := s.repo.InsertMany("channels", channelsInterface); err != nil {
-		return domain.Error{
-			Severity: domain.SEVERITY_ERROR,
-			Message:  err.Error(),
-			Error:    err,
-		}
+		return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
 
-	return domain.Error{
-		Severity: domain.SEVERITY_SUCCESS,
-		Message: fmt.Sprintf("Inserted channels successfully with ids {%s}", strings.Join(func() (s []string) {
-			for _, v := range channels {
-				s = append(s, v.ID)
-			}
-			return s
-		}(), ",")),
-	}
+	return nil
 }
 
-func (s *SetupServiceImpl) LoadRoles(roles []domain.Role) domain.Error {
+func (s *SetupServiceImpl) LoadRoles(roles []domain.Role) *domain.Error {
 	rolesInterface := make([]interface{}, len(roles))
 	for i, member := range roles {
 		rolesInterface[i] = member
 	}
 
 	if err := s.repo.InsertMany("roles", rolesInterface); err != nil {
-		return domain.Error{
-			Severity: domain.SEVERITY_ERROR,
-			Message:  err.Error(),
-			Error:    err,
-		}
+		return domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
 
-	return domain.Error{
-		Severity: domain.SEVERITY_SUCCESS,
-		Message: fmt.Sprintf("Inserted roles successfully with ids {%s}", strings.Join(func() (s []string) {
-			for _, v := range roles {
-				s = append(s, v.ID)
-			}
-			return s
-		}(), ",")),
+	return nil
+}
+
+func (s *SetupServiceImpl) GetPlugins() ([]domain.Plugin, *domain.Error) {
+	var result []domain.Plugin
+
+	if err := s.repo.FindAll("plugins", bson.M{}, &result); err != nil {
+		return []domain.Plugin{{}}, domain.NewError(err, err.Error(), domain.SEVERITY_ERROR)
 	}
+
+	return result, nil
 }
 
 func NewSetupService(repo ports.MongoRepo) *SetupServiceImpl {

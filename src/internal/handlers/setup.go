@@ -3,14 +3,14 @@ package handlers
 import (
 	"fmt"
 
-	"log/slog"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/bwmarrin/discordgo"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/domain"
 	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/ports"
 	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/utils"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/pkg/logger"
 )
 
 type SetupHandler struct {
@@ -18,18 +18,19 @@ type SetupHandler struct {
 }
 
 func (h *SetupHandler) SetupHandlerFunc(s *discordgo.Session, m *discordgo.GuildCreate) {
-	var (
-		err    domain.Error
-		exists bool
-	)
-
-	exists, err = h.svc.IsGuildExists(m.Guild.ID)
-	if err.Error != nil {
-		slog.Error(err.Message)
+	exists, err := h.svc.IsGuildExists(m.Guild.ID)
+	if err != nil {
+		logger.Error(err.Message)
+		return
+	}
+	if exists {
+		logger.Info(fmt.Sprintf("Guild already exists with id {%s}", m.Guild.ID))
+		return
 	}
 
-	if exists {
-		slog.Info(fmt.Sprintf("Guild already exists with id {%s}", m.Guild.ID))
+	plugins, err := h.svc.GetPlugins()
+	if err != nil {
+		logger.Error(err.Message)
 		return
 	}
 
@@ -37,12 +38,12 @@ func (h *SetupHandler) SetupHandlerFunc(s *discordgo.Session, m *discordgo.Guild
 
 	settings := domain.GuildSettings{
 		ID: settingsID,
-		Welcome: domain.GuildSettingsWelcome{
-			Enabled: false,
-		},
-		ServerStats: domain.GuildSettingsServerStats{
-			Enabled: false,
-		},
+		Plugins: func() (g []domain.GuildSettingsPlugin) {
+			for _, v := range plugins {
+				g = append(g, domain.GuildSettingsPlugin{ID: v.ID, Name: v.Name, Enabled: false})
+			}
+			return g
+		}(),
 	}
 
 	guild := domain.Guild{
@@ -98,20 +99,34 @@ func (h *SetupHandler) SetupHandlerFunc(s *discordgo.Session, m *discordgo.Guild
 	}
 
 	err = h.svc.LoadGuild(guild)
-	utils.LogEvent(err)
+	if err != nil {
+		logger.Error(err.Message)
+		return
+	}
 
 	err = h.svc.LoadSettings(settings)
-	utils.LogEvent(err)
+	if err != nil {
+		logger.Error(err.Message)
+		return
+	}
 
 	err = h.svc.LoadMembers(members)
-	utils.LogEvent(err)
+	if err != nil {
+		logger.Error(err.Message)
+		return
+	}
 
 	err = h.svc.LoadChannels(channels)
-	utils.LogEvent(err)
+	if err != nil {
+		logger.Error(err.Message)
+		return
+	}
 
 	err = h.svc.LoadRoles(roles)
-	utils.LogEvent(err)
-
+	if err != nil {
+		logger.Error(err.Message)
+		return
+	}
 }
 
 func NewSetupHandler(svc ports.SetupService) *SetupHandler {

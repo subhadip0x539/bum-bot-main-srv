@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"github.com/bwmarrin/discordgo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+
+	"github.com/bwmarrin/discordgo"
 
 	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/domain"
 	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/ports"
-	"github.com/subhadip0x539/bum-bot-event-hdl/src/internal/core/utils"
+	"github.com/subhadip0x539/bum-bot-event-hdl/src/pkg/logger"
 )
 
 type GreetingsHandler struct {
@@ -15,12 +16,13 @@ type GreetingsHandler struct {
 
 func (h *GreetingsHandler) MemberRemoveHandlerFunc(s *discordgo.Session, m *discordgo.GuildMemberRemove) {
 	err := h.svc.RemoveMember(m.User.ID, m.GuildID)
-	utils.LogEvent(err)
+	if err != nil {
+		logger.Error(err.Message)
+		return
+	}
 }
 
 func (h *GreetingsHandler) MemberAddHandlerFunc(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
-	var err domain.Error
-
 	guild, _ := s.Guild(m.GuildID)
 
 	member := domain.Member{
@@ -36,11 +38,15 @@ func (h *GreetingsHandler) MemberAddHandlerFunc(s *discordgo.Session, m *discord
 		JoinedAt:      m.JoinedAt,
 	}
 
-	err = h.svc.WelcomeMember(guild.ID, m)
-	utils.LogEvent(err)
+	if err := h.svc.WelcomeMember(guild.ID, m); err != nil {
+		logger.Error(err.Message)
+		return
+	}
 
-	err = h.svc.AddMember(member)
-	utils.LogEvent(err)
+	if err := h.svc.AddMember(member); err != nil {
+		logger.Error(err.Message)
+		return
+	}
 
 }
 

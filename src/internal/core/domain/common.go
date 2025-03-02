@@ -2,14 +2,14 @@ package domain
 
 import "time"
 
-type GuildSettingsWelcomeMessageType string
+type GuildSettingsPluginWelcomeOptionsMessageType string
 
 const (
-	GUILD_SETTINGS_WELCOME_MESSAGE_TYPE_EMBED GuildSettingsWelcomeMessageType = "EMBED"
-	GUILD_SETTINGS_WELCOME_MESSAGE_TYPE_TEXT  GuildSettingsWelcomeMessageType = "TEXT"
+	GUILD_SETTINGS_WELCOME_MESSAGE_TYPE_EMBED GuildSettingsPluginWelcomeOptionsMessageType = "EMBED"
+	GUILD_SETTINGS_WELCOME_MESSAGE_TYPE_TEXT  GuildSettingsPluginWelcomeOptionsMessageType = "TEXT"
 )
 
-type GuildSettingsWelcomeMessageContent struct {
+type GuildSettingsPluginWelcomeOptionsMessageContent struct {
 	Title       string `bson:"title"`
 	Description string `bson:"description"`
 	Color       int    `bson:"color"`
@@ -17,15 +17,14 @@ type GuildSettingsWelcomeMessageContent struct {
 	Avatar      bool   `bson:"avatar"`
 }
 
-type GuildSettingsWelcomeMessage struct {
-	Type    GuildSettingsWelcomeMessageType    `bson:"type"`
-	Content GuildSettingsWelcomeMessageContent `bson:"content"`
+type GuildSettingsPluginWelcomeOptionsMessage struct {
+	Type    GuildSettingsPluginWelcomeOptionsMessageType    `bson:"type"`
+	Content GuildSettingsPluginWelcomeOptionsMessageContent `bson:"content"`
 }
 
-type GuildSettingsWelcome struct {
-	Enabled   bool                         `bson:"enabled"`
-	ChannelID string                       `bson:"channel_id,omitempty"`
-	Message   *GuildSettingsWelcomeMessage `bson:"message,omitempty"`
+type GuildSettingsPluginWelcomeOptions struct {
+	ChannelID string                                    `bson:"channel_id,omitempty"`
+	Message   *GuildSettingsPluginWelcomeOptionsMessage `bson:"message,omitempty"`
 }
 
 type GuildSettingsServerStatsFields struct {
@@ -52,10 +51,16 @@ type GuildSettingsServerStats struct {
 	Channels *GuildSettingsServerStatsChannels `bson:"channels,omitempty"`
 }
 
+type GuildSettingsPlugin struct {
+	ID      string      `bson:"id"`
+	Name    string      `bson:"name"`
+	Enabled bool        `bson:"enabled"`
+	Options interface{} `bson:"options,omitempty"`
+}
+
 type GuildSettings struct {
-	ID          string                   `bson:"_id"`
-	Welcome     GuildSettingsWelcome     `bson:"welcome"`
-	ServerStats GuildSettingsServerStats `bson:"server_stats"`
+	ID      string                `bson:"_id"`
+	Plugins []GuildSettingsPlugin `bson:"plugins"`
 }
 
 type Guild struct {
@@ -96,4 +101,12 @@ type Role struct {
 	Position int    `bson:"position"`
 	Color    int    `bson:"color,omitempty"`
 	Managed  bool   `bson:"managed"`
+}
+
+type Plugin struct {
+	ID          string `bson:"_id"`
+	Name        string `bson:"name"`
+	Label       string `bson:"label"`
+	Category    string `bson:"catregory"`
+	Description string `bson:"description"`
 }
