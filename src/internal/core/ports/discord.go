@@ -13,17 +13,18 @@ type DiscordRepo interface {
 }
 
 type GreetingsService interface {
-	AddMember(member domain.Member) domain.Error
-	RemoveMember(memberID string, guildID string) domain.Error
-	WelcomeMember(guildID string, event *discordgo.GuildMemberAdd) domain.Error
-	GoodbyeMember(guildID string, event *discordgo.GuildMemberRemove) domain.Error
+	AddMember(member domain.Member) *domain.Error
+	RemoveMember(memberID string, guildID string) *domain.Error
+	WelcomeMember(guildID string, event *discordgo.GuildMemberAdd) *domain.Error
+	GoodbyeMember(guildID string, event *discordgo.GuildMemberRemove) *domain.Error
 }
 
 type SetupService interface {
-	IsGuildExists(ID string) (bool, domain.Error)
-	LoadGuild(guild domain.Guild) domain.Error
-	LoadSettings(settings domain.GuildSettings) domain.Error
-	LoadMembers(members []domain.Member) domain.Error
-	LoadChannels(channels []domain.Channel) domain.Error
-	LoadRoles(roles []domain.Role) domain.Error
+	IsGuildExists(ID string) (bool, *domain.Error)
+	LoadGuild(guild domain.Guild) *domain.Error
+	LoadSettings(settings domain.GuildSettings) *domain.Error
+	LoadMembers(members []domain.Member) *domain.Error
+	LoadChannels(channels []domain.Channel) *domain.Error
+	LoadRoles(roles []domain.Role) *domain.Error
+	GetPlugins() ([]domain.Plugin, *domain.Error)
 }
